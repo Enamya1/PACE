@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+.eggs/
+build/
+dist/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Config / user data
+configs/profiles/
+
+# Results artifacts
+results/*.csv
+results/*.png
+results/*.json
+results/*.mp4
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local progress tracking (not for sharing)
+STEPS.txt
+
+# mypy / pytest / ruff caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+
+note.txt

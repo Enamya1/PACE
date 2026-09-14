@@ -1,0 +1,19 @@
+camera:
+  camera_index: 0
+  resolution:
+    width: 1280
+    height: 720
+  fps: 30
+
+tracking:
+  jitter_smoothing: 0.6
+  sensitivity: 1.0
+  cursor_delay_ms: 0
+
+blink:
+  blink_threshold: 0.25
+  blink_click_count: 2
+
+storage:
+  save_logs_to_aws: false
+  save_eye_frames: false

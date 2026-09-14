@@ -1,0 +1,14 @@
+ARCHITECTURE DIAGRAM PLACEHOLDER
+================================
+
+This file is a placeholder for architecture.png.
+Generate the diagram once Phase 1-12 interfaces are solidified.
+
+Suggested sections to include later:
+- Camera feed -> MediaPipe face/eye ROI crop
+- OpenCV 5 pipeline (grayscale, blur, Otsu, morph, contours, ellipse, blob, solvePnP)
+- Pupil / glint -> gaze vector -> smoothing -> cursor controller
+- Blink detector -> click dispatch
+- Calibration loop (9-point grid + polynomial fit)
+- Metrics collection -> AWS S3 upload (optional, disabled by default)
+- PyQt6 GUI overlay (status + calibration targets)

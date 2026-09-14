@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pace"
+version = "0.1.0"
+description = "Pupil Assistive Calibrated Interface for Hands-Free Cursor Control"
+requires-python = ">=3.11,<3.13"
+readme = "README.md"
+license = {text = "MIT"}
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "I",  # isort
+    "W",  # pycodestyle warnings
+    "UP",  # pyupgrade
+    "B",  # flake8-bugbear
+]
+ignore = [
+    "E501",  # line length handled by black
+    "B008",  # allow function calls in default args (pydantic Field defaults)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "cloud", "tests"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+explicit_package_bases = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --strict-markers"
