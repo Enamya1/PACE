@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Literal
 
 import yaml
 from pydantic import BaseModel, Field, field_validator
@@ -10,6 +10,11 @@ class CameraConfig(BaseModel):
     resolution_width: int = Field(default=1280, ge=320, le=4096)
     resolution_height: int = Field(default=720, ge=240, le=2160)
     fps: int = Field(default=30, ge=1, le=120)
+    frame_width: int = Field(default=640, ge=320, le=4096)
+    frame_height: int = Field(default=480, ge=240, le=2160)
+    target_fps: int = Field(default=30, ge=1, le=120)
+    max_consecutive_failures: int = Field(default=15, ge=1, le=1000)
+    backend: Literal["auto", "dshow", "avfoundation", "v4l2"] = "auto"
 
     @property
     def resolution(self) -> Tuple[int, int]:
@@ -64,10 +69,18 @@ class PACEConfig(BaseModel):
 
         flat = cls._flatten_nested_keys(raw)
 
-        camera_fields = {
-            k: flat[k] for k in ("camera_index", "resolution_width", "resolution_height", "fps")
-            if k in flat
-        }
+        camera_keys = (
+            "camera_index",
+            "resolution_width",
+            "resolution_height",
+            "fps",
+            "frame_width",
+            "frame_height",
+            "target_fps",
+            "max_consecutive_failures",
+            "backend",
+        )
+        camera_fields = {k: flat[k] for k in camera_keys if k in flat}
         tracking_fields = {
             k: flat[k] for k in ("jitter_smoothing", "sensitivity", "cursor_delay_ms")
             if k in flat

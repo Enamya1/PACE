@@ -45,6 +45,7 @@ Thumbs.db
 
 # Local progress tracking (not for sharing)
 STEPS.txt
+PROJECT_MEMORY.md
 
 # mypy / pytest / ruff caches
 .mypy_cache/
@@ -53,3 +54,4 @@ STEPS.txt
 
 
 note.txt
+PROJECT_MEMORY.md

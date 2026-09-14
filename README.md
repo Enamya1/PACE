@@ -50,7 +50,44 @@ TODO: fill in during Phase 2. Explain why each top-level dep exists:
 
 ## 6. Webcam requirements
 
-TODO: fill in during Phase 3. Minimum resolution, frame rate, IR vs visible-light, glint/LED illuminator requirements, typical eye-to-camera distance, mounting suggestions. List tested webcams.
+Phase 1 establishes the supported capture backends and how to select the right camera. (Minimum resolution, IR vs visible-light, glint/LED illuminator, eye-to-camera distance, and mounting advice will be added during Phase 3.)
+
+### 6.1 Supported backends / platforms
+
+PACE selects the OpenCV backend automatically based on the OS when `camera.backend: auto` (the default):
+
+| OS        | backend flag used       | Value for `camera.backend:` in YAML |
+|-----------|-------------------------|-------------------------------------|
+| Windows   | `cv2.CAP_DSHOW`         | `dshow` (DirectShow — lowest latency)|
+| macOS     | `cv2.CAP_AVFOUNDATION`  | `avfoundation`                       |
+| Linux     | `cv2.CAP_V4L2`          | `v4l2`  (Video4Linux2)               |
+| Any (fallback if unknown) | `cv2.CAP_ANY`    | — (used only on exotic platforms)    |
+
+To override platform auto-detection, set `camera.backend` in `configs/default.yaml` (or a per-user profile under `configs/profiles/`) to one of the literal strings in the rightmost column above.
+
+### 6.2 How to pick the right `camera_index`
+
+- Default is `camera.camera_index: 0` — first device the OS enumerates.
+- Machines with a built-in laptop cam + external USB cam typically expose indices `0` and `1`. If the wrong camera opens, increment `camera_index` to 1, 2, etc. and re-run `python -m app.main --camera-test` until you see frames flowing.
+- On Windows with many capture devices (virtual cams from OBS / Teams / EpocCam), you can also list them with:
+  ```powershell
+  # PowerShell — enumerate DirectShow capture devices
+  Get-CimInstance Win32_PnPEntity | Where-Object { $_.Name -match 'camera|webcam' } | Select Name, DeviceID
+  ```
+- On Linux, indices map to `/dev/video0`, `/dev/video1`, etc. so `ls -l /dev/video*` is the fastest lookup.
+- On macOS, newer OS versions may ask for camera permissions the first time `--camera-test` runs; grant them in System Settings → Privacy & Security → Camera, then re-launch your terminal.
+
+### 6.3 Manual smoke test
+
+The 5-second live test (no OpenCV drawing — Phase 1 only counts frames):
+```bash
+python -m app.main --camera-test
+```
+Expected output: one line per second showing `connected=True` and avg FPS approaching `camera.target_fps` (usually 25–30 on a built-in webcam). If you see `[camera-test] FATAL: No webcam detected at index N`, raise `camera_index` in the YAML.
+
+### 6.4 Disconnect behaviour (Phase 1 failure handling)
+
+Unplugging the USB webcam mid-run will log an error after `camera.max_consecutive_failures` consecutive failed reads (default 15), flip `is_connected()` to `False`, and continue retrying silently — no traceback, no crash. Plug the camera back in and the next successful `read()` restores `is_connected()` to `True` automatically. Re-plugging on Windows sometimes hands you a new index; if frames don't resume, bump `camera_index`.
 
 ## 7. Configuration
 
