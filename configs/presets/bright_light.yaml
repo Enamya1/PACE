@@ -22,34 +22,14 @@ preprocess:
   blur_kernel_size: 5
   blur_sigma: 0.0
   threshold_mode: otsu
-  manual_threshold_value: 60
+  manual_threshold_value: 70
   adaptive_block_size: 25
   adaptive_c: 5
   morph_kernel_size: 3
   morph_open_iterations: 1
   morph_close_iterations: 2
   min_valid_brightness: 15.0
-  max_valid_brightness: 240.0
-
-pupil:
-  min_pupil_area_ratio: 0.01
-  max_pupil_area_ratio: 0.35
-  min_circularity: 0.55
-  use_kalman_tracking: true
-  kalman_process_noise: 0.01
-  kalman_measurement_noise: 0.1
-  max_center_jump_px: 25.0
-  min_confidence_to_accept: 0.4
-  kalman_max_prediction_frames: 5
-
-glint:
-  brightness_threshold: 220
-  min_glint_area_px: 1.0
-  max_glint_area_px: 60.0
-  min_circularity: 0.65
-  max_distance_from_pupil_px: 40.0
-  detector_backend: contour
-  min_confidence_to_accept: 0.4
+  max_valid_brightness: 250.0
 
 tracking:
   jitter_smoothing: 0.6
