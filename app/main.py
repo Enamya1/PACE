@@ -579,6 +579,134 @@ def _run_glint_test(cfg) -> int:
         stream.stop()
 
 
+def _run_feature_test(cfg) -> int:
+    from app.camera.camera_stream import CameraStream
+    from app.camera.exceptions import CameraError
+    from app.detection.face_eye_detector import FaceEyeDetector
+    from app.detection.preprocess import PreprocessPipeline
+    from app.detection.pupil import PupilDetector
+    from app.detection.glint import GlintDetector
+    from app.tracking.gaze_feature import GazeFeatureExtractor
+
+    logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(levelname)s: %(message)s")
+
+    print("=" * 72)
+    print("[feature-test] PHASE 6 HEAD-MOVEMENT ROBUSTNESS DEMO")
+    print("  Step 1 (0-3s):  Hold your gaze STEADY on one fixed spot.")
+    print("  Step 2 (3-8s):  While still looking at the SAME spot, gently")
+    print("                   move your HEAD left / right / forward / back.")
+    print("  Observe: vector_x / vector_y should stay far more stable than")
+    print("           the raw (pupil.center_x, pupil.center_y) pixel coords.")
+    print("=" * 72)
+
+    stream = CameraStream(cfg.camera.camera_index, cfg.camera)
+    detector = FaceEyeDetector(cfg.detection)
+    preprocess = PreprocessPipeline(cfg.preprocess)
+    pupil = PupilDetector(cfg.pupil)
+    glint = GlintDetector(cfg.glint)
+    feature = GazeFeatureExtractor(cfg.gaze_feature)
+
+    try:
+        try:
+            stream.start()
+        except CameraError as exc:
+            print(f"[feature-test] FATAL: {exc}")
+            return 1
+
+        duration_s = 8.0
+        frames_total = 0
+        roi_hits = 0
+        pupil_hits = 0
+        glint_hits = 0
+        feature_hits = 0
+        start_time = time.monotonic()
+        last_tick = start_time
+
+        while time.monotonic() - start_time < duration_s:
+            fd = stream.get_frame(timeout=0.05)
+            if fd is None:
+                continue
+            frames_total += 1
+
+            det = detector.detect(fd.frame)
+            if not det.found or det.left_eye is None:
+                now = time.monotonic()
+                if now - last_tick >= 1.0:
+                    elapsed = now - start_time
+                    print(
+                        f"[feature-test] t={elapsed:.1f}s | "
+                        f"feature=N/A (no face/ROI) | "
+                        f"roi={roi_hits}/{frames_total} "
+                        f"({100 * roi_hits / max(1, frames_total):.0f}%)"
+                    )
+                    last_tick = now
+                continue
+
+            roi_hits += 1
+            pp_left, pp_right = preprocess.process_both_eyes(det)
+            pup_left, pup_right = pupil.detect_both_eyes(pp_left, pp_right)
+            gl_left, gl_right = glint.detect_both_eyes(
+                pp_left, pup_left, pp_right, pup_right
+            )
+
+            if pup_left is not None and pup_left.found:
+                pupil_hits += 1
+            if gl_left is not None and gl_left.found:
+                glint_hits += 1
+
+            ts = time.monotonic()
+            feat = feature.compute(pup_left, gl_left, pup_right, gl_right, ts)
+
+            now = time.monotonic()
+            if now - last_tick >= 1.0:
+                elapsed = now - start_time
+                if feat is None:
+                    print(
+                        f"[feature-test] t={elapsed:.1f}s | "
+                        f"vector_x=N/A vector_y=N/A "
+                        f"conf=N/A eyes_used=NONE "
+                        f"fusion={cfg.gaze_feature.fusion_mode} | "
+                        f"roi={roi_hits}/{frames_total} "
+                        f"pupil={pupil_hits}/{roi_hits} "
+                        f"glint={glint_hits}/{max(1, pupil_hits)}"
+                    )
+                else:
+                    feature_hits += 1
+                    raw_px = ""
+                    if pup_left is not None and pup_left.found:
+                        raw_px = (
+                            f"  [raw L pupil=({pup_left.center_x:5.1f},"
+                            f"{pup_left.center_y:5.1f}) r={pup_left.radius:4.1f}]"
+                        )
+                    print(
+                        f"[feature-test] t={elapsed:.1f}s | "
+                        f"vector_x={feat.vector_x:7.3f} "
+                        f"vector_y={feat.vector_y:7.3f} "
+                        f"conf={feat.confidence:.3f} "
+                        f"eyes_used={feat.eyes_used:4s} "
+                        f"fusion={feat.fusion_mode_used}{raw_px}"
+                    )
+                last_tick = now
+
+        total = time.monotonic() - start_time
+        print(
+            f"[feature-test] DONE after {total:.1f}s | "
+            f"frames={frames_total} "
+            f"roi={roi_hits} ({100 * roi_hits / max(1, frames_total):.1f}%) | "
+            f"pupil={pupil_hits} ({100 * pupil_hits / max(1, roi_hits):.1f}%) | "
+            f"glint={glint_hits} ({100 * glint_hits / max(1, pupil_hits):.1f}%) | "
+            f"feature_frames_with_1s_report={feature_hits}"
+        )
+        return 0
+
+    except KeyboardInterrupt:
+        print("[feature-test] Interrupted by user.")
+        return 130
+    finally:
+        detector.close()
+        stream.stop()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="PACE",
@@ -622,6 +750,13 @@ def main() -> int:
              "pupil ellipse + glint dot + yellow pupil→glint vector line to results/phase5_sample_glint.png.",
     )
     parser.add_argument(
+        "--feature-test",
+        action="store_true",
+        help="Run 8s of Camera → FaceEyeDetector → PreprocessPipeline → PupilDetector → GlintDetector → "
+             "GazeFeatureExtractor LIVE. Prints once/sec: vector_x, vector_y, confidence, eyes_used, fusion_mode. "
+             "Hold gaze steady then gently move your head — normalized vectors stay stable vs raw pixel coords.",
+    )
+    parser.add_argument(
         "--config",
         type=str,
         default=None,
@@ -638,7 +773,9 @@ def main() -> int:
             f"detection.backend={cfg.detection.backend}, "
             f"preprocess.threshold_mode={cfg.preprocess.threshold_mode}, "
             f"pupil.min_circularity={cfg.pupil.min_circularity}, "
-            f"glint.backend={cfg.glint.detector_backend})"
+            f"glint.backend={cfg.glint.detector_backend}, "
+            f"gaze_feature.fusion={cfg.gaze_feature.fusion_mode}, "
+            f"eye_scale_source={cfg.gaze_feature.eye_scale_source})"
         )
         return 0
 
@@ -657,7 +794,10 @@ def main() -> int:
     if args.glint_test:
         return _run_glint_test(cfg)
 
-    print("PACE: Full pipeline not implemented yet. Use --dry-run, --camera-test, --detection-test, --preprocess-test, --pupil-test, or --glint-test.")
+    if args.feature_test:
+        return _run_feature_test(cfg)
+
+    print("PACE: Full pipeline not implemented yet. Use --dry-run, --camera-test, --detection-test, --preprocess-test, --pupil-test, --glint-test, or --feature-test.")
     return 0
 
 

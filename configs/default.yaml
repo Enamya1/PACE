@@ -51,6 +51,14 @@ glint:
   detector_backend: contour
   min_confidence_to_accept: 0.4
 
+gaze_feature:
+  eye_scale_source: pupil_radius
+  fixed_eye_scale_px: 15.0
+  min_pupil_confidence: 0.4
+  min_glint_confidence: 0.4
+  fusion_mode: confidence_weighted
+  smoothing_window: 3
+
 tracking:
   jitter_smoothing: 0.6
   sensitivity: 1.0

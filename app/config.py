@@ -114,6 +114,19 @@ class GlintConfig(BaseModel):
         return v
 
 
+EyeScaleSource = Literal["pupil_radius", "fixed"]
+FusionMode = Literal["confidence_weighted", "average", "best_eye"]
+
+
+class GazeFeatureConfig(BaseModel):
+    eye_scale_source: EyeScaleSource = "pupil_radius"
+    fixed_eye_scale_px: float = Field(default=15.0, gt=0.0)
+    min_pupil_confidence: float = Field(default=0.4, ge=0.0, le=1.0)
+    min_glint_confidence: float = Field(default=0.4, ge=0.0, le=1.0)
+    fusion_mode: FusionMode = "confidence_weighted"
+    smoothing_window: int = Field(default=3, ge=1)
+
+
 class StorageConfig(BaseModel):
     save_logs_to_aws: bool = False
     save_eye_frames: bool = False
@@ -125,6 +138,7 @@ class PACEConfig(BaseModel):
     preprocess: PreprocessConfig = Field(default_factory=PreprocessConfig)
     pupil: PupilConfig = Field(default_factory=PupilConfig)
     glint: GlintConfig = Field(default_factory=GlintConfig)
+    gaze_feature: GazeFeatureConfig = Field(default_factory=GazeFeatureConfig)
     tracking: TrackingConfig = Field(default_factory=TrackingConfig)
     blink: BlinkConfig = Field(default_factory=BlinkConfig)
     storage: StorageConfig = Field(default_factory=StorageConfig)
@@ -243,6 +257,20 @@ class PACEConfig(BaseModel):
                 if fld in glint_raw:
                     glint_fields[fld] = glint_raw[fld]
 
+        gaze_feature_raw = raw.get("gaze_feature", {}) if isinstance(raw, dict) else {}
+        gaze_feature_fields: dict = {}
+        if isinstance(gaze_feature_raw, dict):
+            for fld in (
+                "eye_scale_source",
+                "fixed_eye_scale_px",
+                "min_pupil_confidence",
+                "min_glint_confidence",
+                "fusion_mode",
+                "smoothing_window",
+            ):
+                if fld in gaze_feature_raw:
+                    gaze_feature_fields[fld] = gaze_feature_raw[fld]
+
         tracking_fields = {
             k: flat[k] for k in ("jitter_smoothing", "sensitivity", "cursor_delay_ms")
             if k in flat
@@ -262,6 +290,7 @@ class PACEConfig(BaseModel):
             preprocess=PreprocessConfig(**preprocess_fields),
             pupil=PupilConfig(**pupil_fields),
             glint=GlintConfig(**glint_fields),
+            gaze_feature=GazeFeatureConfig(**gaze_feature_fields),
             tracking=TrackingConfig(**tracking_fields),
             blink=BlinkConfig(**blink_fields),
             storage=StorageConfig(**storage_fields),
